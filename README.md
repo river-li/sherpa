@@ -63,17 +63,17 @@
 ```bash
 # Clone the repository
 git clone https://github.com/AIxCyberChallenge/sherpa.git
-cd sherpa
 
-# Install dependencies
-cd harness_generator
-pip install -r requirements.txt
-
-# Finish environment setup
-bash setup-env.sh
+# Run environment setup (Supports macOS & Linux)
+make setup
 
 # Generate harnesses for a target project (leveldb)
-python batch_generate.py --targets yamls/leveldb.yaml
+# On Apple Silicon (M1/M2/M4), ensure Docker uses amd64 architecture:
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+# Set your OpenAI API key (required for harness generation)
+export OPENAI_API_KEY="your-api-key-here"
+# Run an example repo against the existing harness_generator_yamls/leveldb.yaml file
+make leveldb
 ```
 
 ## 🏗️ How It Works
