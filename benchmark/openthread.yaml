@@ -1,0 +1,13 @@
+functions:
+- name: _ZN2ot3Srp6Server17SetAutoEnableModeEb
+  params:
+  - name: this
+    type: 'bool '
+  - name: aEnabled
+    type: bool
+  return_type: void
+  signature: void ot::Srp::Server::SetAutoEnableMode(bool)
+language: c++
+project: openthread
+target_name: ot-cli-received-fuzzer
+target_path: /src/openthread/tests/fuzz/cli_received.cpp

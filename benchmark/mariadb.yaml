@@ -1,0 +1,18 @@
+functions:
+- name: my_charset_get_by_name
+  params:
+  - name: ''
+    type: 'bool '
+  - name: ''
+    type: 'bool '
+  - name: ''
+    type: int
+  - name: ''
+    type: size_t
+  return_type: void
+  signature: CHARSET_INFO * my_charset_get_by_name(MY_CHARSET_LOADER *, const char
+    *, uint, myf)
+language: c++
+project: mariadb
+target_name: fuzz_json
+target_path: /src/fuzz_json.c

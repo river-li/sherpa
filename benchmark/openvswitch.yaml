@@ -1,0 +1,25 @@
+functions:
+- name: parse_ofp_flow_mod_file
+  params:
+  - name: file_name
+    type: 'bool '
+  - name: port_map
+    type: 'bool '
+  - name: table_map
+    type: 'bool '
+  - name: command
+    type: int
+  - name: fms
+    type: 'bool '
+  - name: n_fms
+    type: 'bool '
+  - name: usable_protocols
+    type: 'bool '
+  return_type: void
+  signature: char * parse_ofp_flow_mod_file(const char *, const struct ofputil_port_map
+    *, const struct ofputil_table_map *, int, struct ofputil_flow_mod **, size_t *,
+    DW_TAG_enumeration_typeofputil_protocol *)
+language: c++
+project: openvswitch
+target_name: json_parser_target
+target_path: /src/openvswitch/tests/oss-fuzz/json_parser_target.c

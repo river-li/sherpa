@@ -1,0 +1,15 @@
+functions:
+- name: ExecuteCommand
+  params:
+  - name: p_vlm
+    type: 'bool '
+  - name: psz_command
+    type: 'bool '
+  - name: pp_message
+    type: 'bool '
+  return_type: int
+  signature: int ExecuteCommand(vlm_t *, const char *, vlm_message_t **)
+language: c
+project: vlc
+target_name: vlc-demux-libfuzzer
+target_path: /src/vlc/test/vlc-demux-libfuzzer.c

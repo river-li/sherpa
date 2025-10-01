@@ -1,0 +1,13 @@
+functions:
+- name: _ZN6duckdb13TableRelation6DeleteERKNSt3__112basic_stringIcNS1_11char_traitsIcEENS1_9allocatorIcEEEE
+  params:
+  - name: ''
+    type: 'bool '
+  - name: ''
+    type: 'bool '
+  return_type: void
+  signature: void duckdb::TableRelation::Delete(const string &)
+language: c++
+project: duckdb
+target_name: parse_fuzz_test
+target_path: /src/duckdb/test/ossfuzz/parse_fuzz_test.cpp

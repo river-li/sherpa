@@ -1,0 +1,14 @@
+functions:
+- name: _ZN4Simd8Avx512bw23SynetConvolution32fInitEmPK25SimdConvolutionParameters
+  params:
+  - name: ''
+    type: size_t
+  - name: ''
+    type: 'bool '
+  return_type: void
+  signature: void * Simd::Avx512bw::SynetConvolution32fInit(size_t, const SimdConvolutionParameters
+    *)
+language: c++
+project: simd
+target_name: simd_load_fuzzer
+target_path: /src/simd_load_fuzzer.cpp
