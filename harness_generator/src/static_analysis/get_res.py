@@ -1,12 +1,11 @@
 
 from _pytest.python import defaultdict
 import tree_sitter_cpp
-from constants import EvalResult
-from cpp_parser import CPPParser
-# from agent_tools.code_tools.parsers.c_parser import CParser
+import json
 from pathlib import Path
 from tree_sitter import Language, Parser
-import json
+from .cpp_parser import CPPParser
+from .constants import EvalResult
 
 
 def get_language_info(work_dir: Path) -> str:
@@ -179,4 +178,4 @@ def get_enhanced_res(save_path: Path, n_run: int=1, enhanced_flag: bool=True):
     return res_data
 
  
-get_enhanced_res(Path("/home/yk/code/fuzz-introspector/scripts/oss-fuzz-gen-e2e/workdir/oss-fuzz-gen/results/localFI/function0/try1"), n_run=1, enhanced_flag=True)
+# get_enhanced_res(Path("/home/yk/code/fuzz-introspector/scripts/oss-fuzz-gen-e2e/workdir/oss-fuzz-gen/results/localFI/function0/try1"), n_run=1, enhanced_flag=True)
