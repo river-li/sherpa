@@ -1,10 +1,24 @@
-from tree_sitter import Language, Parser, Node, Query
+from tree_sitter import Language, Parser, Node, Query, QueryCursor
 import tree_sitter_c  # For C language
 import tree_sitter_cpp  # For C++ language
 import tree_sitter_java  # For Java language
 from constants import LanguageType, FuzzEntryFunctionMapping, LSPFunction
 from pathlib import Path
 from typing import Optional
+
+def execute_query(query: Query, node: Node) -> dict:
+    """
+    Execute a tree-sitter query on a node using QueryCursor (for tree-sitter 0.25+).
+
+    Args:
+        query: The Query object to execute
+        node: The Node to query
+
+    Returns:
+        A dictionary mapping capture names to lists of captured nodes
+    """
+    cursor = QueryCursor(query)
+    return cursor.captures(node)
 
 parser_language_mapping = {
     LanguageType.C: tree_sitter_c.language(),
@@ -57,18 +71,18 @@ class BaseParser:
         return call_name_dict[self.project_lang], func_def_name_dict[self.project_lang]
 
     def exec_query(self, query: Query, query_node: Node, line: int, node_name:str="node_name") -> Optional[Node]:
-            
+
             # Execute the query
-            captures = query.captures(query_node)
+            captures = execute_query(query, query_node)
             if not captures:
                 return None
-            
+
             for source_node in captures[node_name]:
-            
+
                 # TODO will this find the definition that calls the function?
                 if not source_node.text:
                     continue
-                if source_node.start_point.row <= line and line <= source_node.end_point.row:  
+                if source_node.start_point.row <= line and line <= source_node.end_point.row:
                     return source_node
             return None
     
@@ -110,7 +124,7 @@ class BaseParser:
         for _, query in self.func_declaration_query_dict.items():
             # Execute the query
             query = self.parser_language.query(query)
-            captures = query.captures(self.tree.root_node)
+            captures = execute_query(query, self.tree.root_node)
             if not captures:
                 continue
 
@@ -188,7 +202,7 @@ class BaseParser:
         query = self.parser_language.query(f"({self.call_func_name}) @func_call")
 
         # Execute the query
-        captures = query.captures( self.tree.root_node)
+        captures = execute_query(query, self.tree.root_node)
 
         if not captures:
             return ""
@@ -268,10 +282,10 @@ class BaseParser:
         function_call_query = self.parser_language.query(f"({self.call_func_name}) @func_call")
 
         # Execute the query
-        captures = function_call_query.captures(entry_node)
+        captures = execute_query(function_call_query, entry_node)
         if not captures:
             return None
-            
+
         # Print the nodes
         for node in captures["func_call"]:
             id_node = self.get_identifier_node(node, function_name)
@@ -303,12 +317,12 @@ class BaseParser:
 
     def get_definition_node(self, function_name: str) -> Optional[Node]:
         # TODO this only test on C/C++ language
-        
+
         # Define a query to find "function_definition" nodes
         function_definition_query = self.parser_language.query(f"({self.func_def_name}) @func_def")
 
         # Execute the query
-        captures = function_definition_query.captures(self.tree.root_node)
+        captures = execute_query(function_definition_query, self.tree.root_node)
         if not captures:
             return None
         # Check the nodes
@@ -319,7 +333,7 @@ class BaseParser:
                     return node
             except Exception as e:
                 print("Error in parsing the function definition: ", e)
-        
+
         return None
        
 

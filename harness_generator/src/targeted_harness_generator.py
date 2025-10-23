@@ -14,7 +14,7 @@ from .harness_generator import HarnessGenerator, HarnessGeneratorError, MAX_BUIL
 from .static_analysis import CPPParser, EvalResult
 from .codex_helper import CodexHelper
 
-CODEX_ANALYSIS_MODEL = os.environ.get("CODEX_ANALYSIS_MODEL", "o3")
+CODEX_ANALYSIS_MODEL = os.environ.get("CODEX_ANALYSIS_MODEL", "gpt-5-mini")
 CODEX_APPROVAL_MODE = os.environ.get("CODEX_APPROVAL_MODE", "full-auto")
 
 class TargetedHarnessGenerator(HarnessGenerator):
@@ -37,7 +37,7 @@ class TargetedHarnessGenerator(HarnessGenerator):
         target_function: str,
         build: bool = True,
         run_smoke: bool = False,
-        max_iterations: int = MAX_BUILD_RETRIES,
+        max_iterations: int = 5,
     ) -> EvalResult:
         """
         Generate a targeted harness for a specific function.
@@ -157,50 +157,44 @@ class TargetedHarnessGenerator(HarnessGenerator):
             ────────────────────────────────────────
             **Requirements**
 
-            1. **Target the specific function**: The harness MUST invoke `{target_function}`.
+            * **Target the specific function**: The harness MUST invoke `{target_function}`.
                This is a strict requirement for success.
 
-            2. **Proper API usage**:
-               - Clone the project repository to understand the function signature
-               - Ensure all parameters match the actual function signature
-               - Initialize any required contexts/handles using official constructors
-               - Use the library correctly as intended (avoid passing wrong types)
+            * **ENSURE HARNESS USES THE LIBRARY CORRECTLY**
+              Many false positives are the result of the generated harness code failing
+              to exercise the library properly (passing a ptr instead of an int, etc.)
+              Ensure all calls performed by the harness match the library signatures
+              and use the library in the way it was intended to be used. Our goal is to
+              only uncover bugs that are true positives with real world implications.
 
-            3. **Harness signature**:
-               ```c++
-               extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
-               ```
+            * Harness signature  
+            ```c++
+            extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
+            ````
 
-            4. **Function invocation**:
-               - The harness must call `{target_function}` with fuzzed input
-               - Do NOT redefine or create a fake implementation of `{target_function}`
-               - Call the actual library function, not a stub
+            * Keep everything in C/C++ (follow project style).
+            * **Do not** remove or refactor existing code; just add the harness and
+            tweak build scripts so it is compiled.
+            * Place the harness source next to similar existing harnesses.
 
-            5. **Build integration**:
-               - Update build scripts (build.sh, CMakeLists.txt, etc.) to compile the harness
-               - Place the harness source next to existing harnesses
-               - Follow the project's existing build patterns
-
-            6. **Input handling**:
-               - Use the fuzzer data (data, size) to drive `{target_function}`
-               - Handle edge cases (empty input, null checks, etc.)
-               - Clean up resources properly (no memory leaks)
-
-            ────────────────────────────────────────
-            **Important Notes**
-
-            - You MUST clone the repository to validate function signatures
-            - Clone within your working directory (not /tmp)
-            - The build system typically uses Dockerfile and build.sh
-            - Ensure the harness uses `{target_function}` correctly
-            - Avoid false positives by proper API usage
-
-            Extracted archive directories:
+            Extracted archive directories (may be empty if none):
             {', '.join(str(p.relative_to(self.repo_path)) for p in self._archives) or 'None'}
 
-            **When finished**, write the path to the new harness into `./done`
+            **NO** build/run commands—just write code + build recipe edits.
+            When finished, write the path to the new harness into `./done`
 
-            This is important security research - do your best!
+            Notes: 
+            - The oss-fuzz project typically contains a Dockerfile, build.sh, and project.yaml.
+            - The repo source is typically not included, but can be cloned to assist in analysis.
+              - It may be specified in project.yaml as `main_repo`. It may be cloned as part of the docker build.
+              - When you clone the repo source, you must clone it within your working directory (don't use /tmp)
+            - Carefully analyze the existing build structure to fully understand what is needed to successfully include your new harness in the build.
+
+            VERY IMPORTANT: You must clone the repo so that you can validate the function signatures of every library function you put in the new harness.
+                            You must ensure that the library is being used correctly to mitigate false-positive crashes caused by errors in the harness.
+
+            This task is very important! Every bug we trigger will be responsibly disclosed to make the world a safer place.
+            Have fun and do your very best!
             """
         ).strip()
 
@@ -221,26 +215,43 @@ class TargetedHarnessGenerator(HarnessGenerator):
         Validate that the harness invokes the target function and doesn't fake it.
 
         Args:
-            target_function: The name of the function to target
+            target_function: The function signature (e.g., "int foo(const Bar *, int)")
             harness_source: The source code of the harness
 
         Returns:
             EvalResult.Success if valid, otherwise the specific failure reason
         """
+        # Extract function name from signature
+        from .static_analysis.get_res import extract_name
+        try:
+            function_name = extract_name(target_function, keep_namespace=False, exception_flag=False)
+            if not function_name:
+                # Fallback: try to extract name manually
+                # Simple heuristic: find identifier before '('
+                import re
+                match = re.search(r'\b(\w+)\s*\(', target_function)
+                function_name = match.group(1) if match else target_function
+        except Exception as e:
+            # Fallback to using the whole signature
+            print(f"[!] Warning: Could not extract function name from '{target_function}': {e}")
+            function_name = target_function
+
+        print(f"[*] Extracted function name: {function_name} from signature: {target_function}")
+
         # Determine language-appropriate parser
         parser = CPPParser(None, source_code=harness_source)
 
         # Check 1: Ensure target function is not redefined in the harness
-        if parser.exist_function_definition(target_function):
-            print(f"[!] Harness contains a fake definition of {target_function}")
+        if parser.exist_function_definition(function_name):
+            print(f"[!] Harness contains a fake definition of {function_name}")
             return EvalResult.Fake
 
         # Check 2: Ensure target function is actually called
-        if not parser.is_fuzz_function_called(target_function):
-            print(f"[!] Harness does not call {target_function}")
+        if not parser.is_fuzz_function_called(function_name):
+            print(f"[!] Harness does not call {function_name}")
             return EvalResult.NoCall
 
-        print(f"[*] ✓ Harness correctly invokes {target_function}")
+        print(f"[*] ✓ Harness correctly invokes {function_name}")
         return EvalResult.Success
 
     def _validate_fuzzing(

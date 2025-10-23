@@ -3,9 +3,23 @@ from _pytest.python import defaultdict
 import tree_sitter_cpp
 import json
 from pathlib import Path
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Parser, Query, QueryCursor
 from .cpp_parser import CPPParser
 from .constants import EvalResult
+
+def execute_query(query: Query, node) -> dict:
+    """
+    Execute a tree-sitter query on a node using QueryCursor (for tree-sitter 0.25+).
+
+    Args:
+        query: The Query object to execute
+        node: The Node to query
+
+    Returns:
+        A dictionary mapping capture names to lists of captured nodes
+    """
+    cursor = QueryCursor(query)
+    return cursor.captures(node)
 
 
 def get_language_info(work_dir: Path) -> str:
@@ -60,7 +74,7 @@ def extract_name(function_signature: str, keep_namespace: bool=False, exception_
     )
     """
     query = lang.query(query_str)
-    captures = query.captures(tree.root_node)
+    captures = execute_query(query, tree.root_node)
     if not captures:
         if exception_flag: 
             raise ValueError(f"Function signature '{function_signature}' does not contain a valid function declaration.")
